@@ -1,4 +1,5 @@
 # Face-Mask-Detection
+This project uses a Convolutional Neural Network (CNN) to detect whether individuals are wearing a mask in images. The model is trained on a dataset with labeled images of people with and without masks. Using OpenCV and Keras, the app provides real-time predictions and displays the results with bounding boxes around detected faces. The CNN model is optimized for accuracy in detecting facial masks, offering a practical solution for public health and safety monitoring.
 # library
 !pip install numpy pandas matplotlib scikit-learn opencv-python-headless pillow imutils tensorflow keras streamlit pyngrok albumentations --quiet
 
