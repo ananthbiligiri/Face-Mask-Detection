@@ -8,74 +8,61 @@ from PIL import Image
 import os
 
 # Load the pre-trained model
-model_path = "/content/drive/MyDrive/mini/mask_detector.model.keras"  # Update with the correct path
+model_path = "/content/drive/MyDrive/mini/mask_detector.model.keras"
 if not os.path.exists(model_path):
     st.error("Model file not found! Please check the path.")
 else:
     mask_detector = load_model(model_path)
 
-# Load the face detection model (Haar Cascade for face detection)
+# Load the face detection model
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# Function to predict mask on detected face
 def predict_mask_and_label(image, mask_detector):
-    # Convert the image to numpy array for processing
-    original_image = np.array(image)  # Preserve the original image
-    image_array = original_image.copy()  # Work on a copy for annotation
-    gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)  # Convert to grayscale for face detection
-
-    # Detect faces in the image
+    original_image = np.array(image)
+    image_array = original_image.copy()
+    gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
     faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
     if len(faces) == 0:
-        return image, "No face detected", 0.0  # No face detected case
+        return image, "No face detected", 0.0
 
-    # Process each face
     for (x, y, w, h) in faces:
-        face = image_array[y:y+h, x:x+w]  # Extract face region
-        face_resized = cv2.resize(face, (224, 224))  # Resize the face to fit the model input
-        face_resized = img_to_array(face_resized)  # Convert the face image to array
-        face_resized = preprocess_input(face_resized)  # Preprocess the face image
-        face_resized = np.expand_dims(face_resized, axis=0)  # Add batch dimension
+        face = image_array[y:y+h, x:x+w]
+        face_resized = cv2.resize(face, (224, 224))
+        face_resized = img_to_array(face_resized)
+        face_resized = preprocess_input(face_resized)
+        face_resized = np.expand_dims(face_resized, axis=0)
 
-        # Predict mask or no mask
         predictions = mask_detector.predict(face_resized)
         mask, without_mask = predictions[0]
         label = "Mask" if mask > without_mask else "No Mask"
         confidence = max(mask, without_mask)
 
-        # Annotate the copy with a rectangular box and label
-        color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
-        cv2.rectangle(image_array, (x, y), (x+w, y+h), color, 2)  # Draw rectangle around face
-        label_text = f"{label}: {confidence * 100:.2f}%"  # Label text with confidence
-        cv2.putText(image_array, label_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+        color = (0, 255, 0) if label == "Mask" else (255, 0, 0)
+        cv2.rectangle(image_array, (x, y), (x+w, y+h), color, 2)
+        label_text = f"{label}: {confidence * 100:.2f}%"
+        cv2.putText(image_array, label_text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
 
-    # Convert annotated image to RGB for display
-    image_rgb_annotated = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
-
-    return Image.fromarray(image_rgb_annotated), label, confidence
+    annotated_image = Image.fromarray(image_array)
+    return annotated_image, label, confidence
 
 # Streamlit UI
-st.title("Face Mask Detection")
+st.title("Face Mask Detection")  # Title displayed only once
 
-# Upload an image
-uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
+# Ensure a unique key for the file uploader
+uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"], key="unique_file_uploader")
+
 if uploaded_file:
-    # Open the uploaded image
+    # Process the uploaded image
     image = Image.open(uploaded_file)
     st.image(image, caption="Uploaded Image (Original)", use_column_width=True)
 
-    # Predict button
-    if st.button("Predict"):
+    # Prediction button with a unique key
+    if st.button("Predict", key="unique_predict_button"):
         labeled_image, label, confidence = predict_mask_and_label(image, mask_detector)
-
-        # Show the original image with the annotated results
         st.image(labeled_image, caption=f"Predicted Label: {label}", use_column_width=True)
-
-        # Display the prediction results
         st.write(f"**Prediction:** {label}")
         st.write(f"**Percentage:** {confidence * 100:.2f}%")
-
 
 
 
